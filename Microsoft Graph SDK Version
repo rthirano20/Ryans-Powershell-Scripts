@@ -1,0 +1,31 @@
+function Get-SharepointItemsviaPowershell {
+      [Cmdletbinding()]
+      param(
+            $DriveId = [DriveId String],
+            $DriveItemID =[DriveItemID],
+            $OutputFolderPath = [Put here the location you want to save the files at]
+      )
+
+      Get-MgDriveItemChild -DriveId $DriveId -DriveItemId $DriveItemID |
+      ForEach-Object{
+            if ($_.folder.childcount -ge 0) {
+                  Write-Output $_.name
+                  $ItemName = $_.name
+                  Write-Output $_.ParentReference.Path.Trimstart("drives/$DriveId/root:")
+                  $TrimmedSharePointItemPath = $_.ParentReference.Path.Trimstart("drives/$DriveId/root:")
+                  Write-Output $OutputFolderPath/$TrimmedSharePointItemPath/$ItemName
+                  New-Item -path $OutputFolderPath/$TrimmedSharePointItemPath/$ItemName -ItemType Directory
+                  Get-SharepointItemsviaPowershell -DriveId $DriveId -DriveItemId $_.Id
+                  
+            }
+            else {Write-Output $_.name
+                  $ItemName = $_.name
+                  Write-Output $_.ParentReference.Path.Trimstart("drives/$DriveId/root:")
+                  $TrimmedSharePointItemPath = $_.ParentReference.Path.Trimstart("drives/$DriveId/root:")
+                  Write-Output $OutputFolderPath/$TrimmedSharePointItemPath/$ItemName
+                  Get-MgDriveItemContent -DriveId $DriveId -DriveItemId $_.Id `
+                  -OutFile $OutputFolderPath/$TrimmedSharePointItemPath/$ItemName
+
+            }
+      }
+}
