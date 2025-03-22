@@ -1,0 +1,32 @@
+function Get-viaRESTAPISharepointItemsviaPowershell {
+      [Cmdletbinding()]
+      param(
+            $uri = "https://graph.microsoft.com/v1.0/sites/[site-id]/sites/[subsite-id]/drive/root:/[sharepoint-folder-name]",
+            $OutputFolderPath = [location where you want to save the file]
+      )
+      Write-Output (invoke-restmethod -uri ${uri} -method GET -headers $authheader).value
+      (invoke-restmethod -uri "${uri}:/children" -method GET -headers $authheader).value |
+      ForEach-Object{
+            if ($_.folder.childcount -ge 0) {
+                  Write-Output $_.name
+                  $ItemName = $_.name
+                  Write-Output $_.ParentReference.Path.Trimstart("/drive/root:/")
+                  $TrimmedSharePointItemPath = $_.ParentReference.Path.Trimstart("/drive/root:/")
+                  Write-Output $OutputFolderPath/$TrimmedSharePointItemPath/$ItemName
+                  New-Item -path $OutputFolderPath/$TrimmedSharePointItemPath/$ItemName -ItemType Directory
+                  Write-Output "https://graph.microsoft.com/v1.0/sites/[site-id]/sites/[subsite-id]/drive/root:/$TrimmedSharePointItemPath/${ItemName}"
+                  Get-viaRESTAPISharepointItemsviaPowershell -uri "https://graph.microsoft.com/v1.0/sites/[site-id]/sites/[subsite-id]/drive/root:/$TrimmedSharePointItemPath/${ItemName}"
+            }
+
+            else {Write-Output $_.name
+                  $ItemName = $_.name
+                  Write-Output $_.ParentReference.Path.Trimstart("/drive/root:/")
+                  $TrimmedSharePointItemPath = $_.ParentReference.Path.Trimstart("/drive/root:/")
+                  Write-Output $OutputFolderPath/$TrimmedSharePointItemPath/$ItemName
+                  Invoke-RestMethod -uri "https://graph.microsoft.com/v1.0/sites/[site-id]/sites/[subsite-id]/drive/root:/$TrimmedSharePointItemPath/${ItemName}:/content"`
+                  -method GET `
+                  -headers $authheader `
+                  -OutFile $OutputFolderPath/$TrimmedSharePointItemPath/$ItemName
+            }
+      }
+}
