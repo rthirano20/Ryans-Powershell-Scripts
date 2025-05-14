@@ -1,0 +1,53 @@
+function New-ItemstoSharepoint {
+      [Cmdletbinding()]
+      param(
+            $DriveId = [drive id identifier],
+            $DriveItemId = [drive item id identifier],
+            $ItemPath = [file path location of folder whose contents you want to upload]
+      )
+      Write-Output (Get-Item -Path $ItemPath)
+      (Get-Item -Path $ItemPath) |
+      ForEach-Object{
+      if ($_.GetType().Name -eq "DirectoryInfo"){
+            Write-Output ($_.GetType().Name)
+            Write-Output "Is a Folder"
+                  $folderparams = @{
+                        name = $_.Name
+                        folder = @{
+                        "childCount" = 1024
+                        }
+                  }
+            Write-Output $folderparams
+            New-MgDriveItemchild -DriveId $DriveId -DriveItemId $DriveItemId -BodyParameter $folderparams|
+                  ForEach-Object{
+                  $CreatedFolderItemID = $_.Id
+                  Write-Output $CreatedFolderItemID
+                  }
+            Get-ChildItem $ItemPath |
+                  ForEach-Object{
+                        New-ItemstoSharepoint -DriveItemId $CreatedFolderItemID -ItemPath $_.PSPath.Substring(38)
+                        }
+      }
+      elseif ($_.GetType().Name -eq "FileInfo") {
+            Write-Output ($_.GetType().Name)
+            Write-Output "Is a File"
+                  $fileparams = @{
+                        name = $_.Name
+                        file = @{
+                        "mimeType" = "application/octet-stream"
+                        }
+                  }
+            Write-Output $folderparams
+            New-MgDriveItemchild -DriveId $DriveId -DriveItemId $DriveItemId -BodyParameter $fileparams |
+                  ForEach-Object{
+                        $CreatedFileItemID = $_.Id
+                        Write-Output $CreatedFileItemID
+                  }
+            Set-MgDriveItemContent -DriveId $DriveId -DriveItemId $CreatedFileItemID -InFile $ItemPath
+
+      }
+      else {
+            Write-Output "Undecided"
+      }
+}
+}
