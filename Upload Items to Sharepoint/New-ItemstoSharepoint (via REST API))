@@ -1,0 +1,51 @@
+function New-ItemstoSharepoint {
+      [Cmdletbinding()]
+      param(
+            $ItemPath = [file path location of folder whose contents you want to upload],
+            $uri = [uri of the folder you want to copy the local file contents to, in Microsoft Graph API format]
+      )
+      Write-Output (Get-Item -Path $ItemPath)
+      (Get-Item -Path $ItemPath) |
+      ForEach-Object{
+      if ($_.GetType().Name -eq "DirectoryInfo"){
+            Write-Output ($_.GetType().Name)
+            Write-Output "Is a Folder"
+                  $ForuriName = $_.Name
+                  $Body = @{
+                        name = $_.Name
+                        folder = @{
+                        }
+                        "@microsoft.graph.conflictBehavior" = "rename"
+            }
+            invoke-restmethod -uri "${uri}:/children" `
+            -method POST `
+            -headers $authheader `
+            -Body (ConvertTo-Json($Body)) `
+            -ContentType "application/json"|
+                  ForEach-Object{
+                  $CreatedFolderItemID = $_.Id
+                  Write-Output $CreatedFolderItemID
+                  }
+            Get-ChildItem $ItemPath |
+                  ForEach-Object{
+                        Write-Output $uri/$name
+                        Write-Output $_.PSPath.Substring(38)
+                        New-ItemstoSharepoint -DriveItemId $CreatedFolderItemID -ItemPath $_.PSPath.Substring(38) -uri $uri/$ForuriName
+                        }
+      }
+      elseif ($_.GetType().Name -eq "FileInfo") {
+            Write-Output ($_.GetType().Name)
+            Write-Output "Is a File"
+                  $ForuriName = $_.Name
+            Write-Output "Below is the full URI of the file upload"
+            Write-Output "${uri}/${ForuriName}:/content"
+            invoke-restmethod -uri "${uri}/${ForuriName}:/content" `
+            -method PUT `
+            -headers $authheader `
+            -InFile $ItemPath
+      }
+      else {
+            Write-Output "Undecided"
+      }
+}
+}
